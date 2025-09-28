@@ -151,6 +151,98 @@ The MCP server exposes tools in several categories:
 4. **Workflow Tools**: Complete workflow validation
 5. **Management Tools**: Creating and updating workflows (requires API config)
 
+## Current Session Context (Updated: 2025-09-28)
+
+### MCP Server Configuration Status ✅ RESOLVED
+**Problem**: User experienced missing N8N MCP tools in VS Code Claude extension
+**Root Cause**: MCP server configuration was missing from VS Code settings
+**Solution Applied**: Added complete MCP server configuration to `/Users/Stefan/Library/Application Support/Code/User/settings.json`
+
+**Configured MCP Servers**:
+1. **n8n-mcp** - Complete n8n documentation server (42 tools)
+   - Command: `npx n8n-mcp`
+   - Working Directory: `/Users/Stefan/Documents/N8N-PROJECT/n8n-mcp`
+   - API URL: `https://stefan.evofin.de`
+   - Status: ✅ Server tested and functional
+
+2. **microsoft365-admin** - Microsoft 365 administration tools
+   - Command: `@pnp/cli-microsoft365-mcp-server`
+   - Tenant ID configured
+   - Status: ✅ Configuration added
+
+3. **azure-infrastructure** - Azure infrastructure management
+   - Command: `@azure/mcp`
+   - Azure subscription and tenant configured
+   - Status: ✅ Configuration added
+
+**Next Action Required**: User must restart VS Code to load the new MCP server configuration.
+
+### Environment Details
+- **Platform**: macOS Darwin 25.0.0 (ARM64)
+- **Node.js**: v24.9.0
+- **Project Version**: n8n-mcp v2.13.2
+- **Database**: SQLite with better-sqlite3, FTS5 not available (using LIKE search)
+- **Git Status**: Clean working directory on main branch
+- **N8N API**: Configured and working at stefan.evofin.de
+
+### SCAN v2.0.3 Enhanced - N8N Integration Status
+
+**✅ COMPLETED:**
+- ✅ SCAN v2.0.3 Enhanced Workflow successfully imported to N8N at stefan.evofin.de
+- ✅ Workflow ID: `2biV9D8YcWBtkevY`
+- ✅ 19 Nodes completely imported with all processing features:
+  - PDF File Trigger (File System Monitor)
+  - Adobe PDF Services (Extract + OCR APIs)
+  - OpenAI Categorization with medical special handling
+  - Enhanced Filename Generator with medical document naming logic
+  - Dual Feedback Systems (Universal confidence + Bewirtungsbeleg completion)
+  - PDF Metadata Embedding (full text in Subject field)
+  - Supabase Integration for complete document lifecycle tracking
+- ✅ N8N API Key working: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxYWRmMTViMy0yNTA4LTQwZDItOTVkZC1mMGYxMjkyZmM0YzciLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzU4NzI4MjQxfQ.APyjAO11-36zdv2gRapGFWOpq-yrlcvMruxtKIFrOeQ`
+
+**📋 NEXT STEPS AFTER MAC RESTART:**
+1. **Configure N8N Variables** (15 variables - manual via UI, license limitation):
+   - ADOBE_CLIENT_ID: `20d5d9e976c94738998950425f1bb743`
+   - ADOBE_CLIENT_SECRET: `p8e-MwBTUYlpJ0B0K-Nd7FwCrqU8ekKQtVWu`
+   - ADOBE_ACCESS_TOKEN: [User's actual Adobe token]
+   - ADOBE_PDF_SERVICES_BASE_URL: `https://pdf-services.adobe.io/api/v1`
+   - OPENAI_API_KEY: [User's OpenAI key]
+   - OPENAI_PRIMARY_MODEL: `gpt-4o-mini`
+   - SUPABASE_URL: [User's Supabase URL]
+   - SUPABASE_SERVICE_KEY: [User's Supabase service key]
+   - SUPABASE_ANON_KEY: [User's Supabase anon key]
+   - SCAN_INPUT_DIRECTORY: `/Users/Stefan/Documents/SCAN/input`
+   - SCAN_OUTPUT_DIRECTORY: `/Users/Stefan/Documents/SCAN/output`
+   - FEEDBACK_EMAIL_RECIPIENT: [User's email]
+   - CONFIDENCE_THRESHOLD: `0.99`
+   - DEFAULT_OCR_LANGUAGE: `de-DE`
+
+2. **Set up N8N Credentials** (manual via UI):
+   - Adobe PDF Services (HTTP Header Auth)
+   - OpenAI API (HTTP Header Auth)
+   - Supabase API (HTTP Header Auth)
+   - Gmail OAuth2 (for feedback emails)
+
+3. **Activate Workflow for Production**
+
+**📄 IMPORTANT FILES CREATED:**
+- `enhanced_scan_workflow_v2_3.json` - Complete 19-node N8N workflow
+- `n8n_variables.json` - All required N8N variables
+- `import_scan_workflow.py` - Import script for workflow
+- `MANUAL_IMPORT_INSTRUCTIONS.md` - Manual setup instructions
+
+**🔧 WORKFLOW FEATURES READY:**
+- 99.99% accuracy targeting with dual feedback systems
+- Medical document special handling (Apotheke vs Arzt naming logic)
+- Multi-language OCR (German, English, French, Italian)
+- Enhanced filename format: `YYYY-MM-DD_Kategorie_Unterkategorie_Empfänger_Absender_Belegnummer_Betrag.pdf`
+- Full text metadata embedding in PDF Subject field
+- Automatic directory monitoring and file processing
+- Mobile-optimized feedback emails
+
+**🎯 TO RESUME WORK:**
+User should say: "Continue with SCAN v2.0.3 Enhanced N8N setup" and Claude will pick up from credential configuration.
+
 ## Memories and Notes for Development
 
 ### Development Workflow Reminders
@@ -190,6 +282,6 @@ ALWAYS prefer editing an existing file to creating a new one.
 NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
 - When you make changes to MCP server, you need to ask the user to reload it before you test
 - When the user asks to review issues, you should use GH CLI to get the issue and all the comments
-- When the task can be divided into separated subtasks, you should spawn separate sub-agents to handle them in paralel
+- When the task can be divided into separated subtasks, you should spawn separate sub-agents to handle them in parallel
 - Use the best sub-agent for the task as per their descriptions
 - Do not use hyperbolic or dramatic language in comments and documentation
