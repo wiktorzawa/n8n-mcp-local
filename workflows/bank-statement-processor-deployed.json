@@ -1,0 +1,487 @@
+{
+    "id": "0NRfDbvKvExftA8l",
+    "name": "🏦 Bank Statement Processor - Enterprise",
+    "active": false,
+    "nodes": [
+        {
+            "parameters": {
+                "event": "fileCreated",
+                "driveId": {
+                    "__rl": true,
+                    "value": "My Drive",
+                    "mode": "list"
+                },
+                "folderId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list"
+                },
+                "options": {}
+            },
+            "id": "trigger-drive",
+            "name": "New Bank Statement",
+            "type": "n8n-nodes-base.googleDriveTrigger",
+            "typeVersion": 1,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "meta1",
+                            "name": "file_id",
+                            "value": "={{ $json.id }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "meta2",
+                            "name": "file_name",
+                            "value": "={{ $json.name }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "meta3",
+                            "name": "processing_id",
+                            "value": "={{ $workflow.id }}_{{ $now.toMillis() }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "meta4",
+                            "name": "timestamp",
+                            "value": "={{ $now.toISO() }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "set-metadata",
+            "name": "Extract Metadata",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Processing_Log",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "processing_id": "={{ $json.processing_id }}",
+                        "timestamp": "={{ $json.timestamp }}",
+                        "filename": "={{ $json.file_name }}",
+                        "status": "STARTED"
+                    }
+                },
+                "options": {}
+            },
+            "id": "log-start",
+            "name": "Log Start",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.7,
+            "position": [
+                680,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "download",
+                "fileId": {
+                    "__rl": true,
+                    "value": "={{ $json.file_id }}",
+                    "mode": "id"
+                },
+                "options": {}
+            },
+            "id": "download-file",
+            "name": "Download File",
+            "type": "n8n-nodes-base.googleDrive",
+            "typeVersion": 3,
+            "position": [
+                900,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "image",
+                "operation": "analyze",
+                "modelId": {
+                    "__rl": true,
+                    "value": "gpt-4o",
+                    "mode": "list"
+                },
+                "prompt": "Wyekstrahuj dane z polskiego wyciągu bankowego w formacie JSON:\n{\n  \"document_info\": {\n    \"bank_name\": \"string\",\n    \"account_holder\": \"string\",\n    \"account_number\": \"PL...\",\n    \"statement_period\": {\"from\": \"YYYY-MM-DD\", \"to\": \"YYYY-MM-DD\"},\n    \"currency\": \"PLN\"\n  },\n  \"balances\": {\n    \"opening_balance\": 0.00,\n    \"closing_balance\": 0.00,\n    \"total_income\": 0.00,\n    \"total_expense\": 0.00\n  },\n  \"transactions\": [\n    {\n      \"date\": \"YYYY-MM-DD\",\n      \"description\": \"string\",\n      \"amount\": -150.50,\n      \"type\": \"debit|credit\",\n      \"balance_after\": 5000.00\n    }\n  ],\n  \"metadata\": {\n    \"total_transactions\": 0,\n    \"confidence_score\": 0.95\n  }\n}\n\nZasady:\n- Daty w formacie YYYY-MM-DD\n- Kwoty debetowe jako ujemne liczby\n- Kwoty kredytowe jako dodatnie liczby\n- Zwróć TYLKO JSON bez markdown",
+                "options": {
+                    "temperature": 0.1,
+                    "maxTokens": 4000
+                }
+            },
+            "id": "ai-extract",
+            "name": "GPT4o Vision Extract",
+            "type": "@n8n/n8n-nodes-langchain.openAi",
+            "typeVersion": 1.8,
+            "position": [
+                1120,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Parse AI response and validate\nconst aiResponse = $input.item.json.message?.content || '{}';\nlet data;\n\ntry {\n  // Remove markdown code blocks if present\n  const cleanJson = aiResponse.replace(/```json\\n?|```/g, '').trim();\n  data = JSON.parse(cleanJson);\n  \n  // Basic validation\n  const confidence = data.metadata?.confidence_score || 0;\n  const hasTransactions = (data.transactions?.length || 0) > 0;\n  \n  // Calculate balance check\n  const openingBalance = data.balances?.opening_balance || 0;\n  const closingBalance = data.balances?.closing_balance || 0;\n  const transactionSum = (data.transactions || []).reduce((sum, t) => sum + (t.amount || 0), 0);\n  const balanceMatch = Math.abs((openingBalance + transactionSum) - closingBalance) < 0.01;\n  \n  return {\n    json: {\n      ...data,\n      validation: {\n        is_valid: confidence > 0.85 && hasTransactions && balanceMatch,\n        confidence: confidence,\n        balance_check: balanceMatch,\n        has_data: hasTransactions,\n        errors: !balanceMatch ? ['Saldo nie zgadza się'] : []\n      }\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      validation: {\n        is_valid: false,\n        confidence: 0,\n        errors: [`Parse error: ${error.message}`]\n      }\n    }\n  };\n}"
+            },
+            "id": "validate-data",
+            "name": "Validate and Parse",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1340,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": ""
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.validation.is_valid }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "check-valid",
+            "name": "Valid Data",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.1,
+            "position": [
+                1560,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "transactions",
+                "options": {}
+            },
+            "id": "split-transactions",
+            "name": "Split Transactions",
+            "type": "n8n-nodes-base.splitOut",
+            "typeVersion": 1,
+            "position": [
+                1780,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Transactions",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "processing_id": "={{ $('Extract Metadata').item.json.processing_id }}",
+                        "bank_name": "={{ $('Validate and Parse').item.json.document_info.bank_name }}",
+                        "account_number": "={{ $('Validate and Parse').item.json.document_info.account_number }}",
+                        "transaction_date": "={{ $json.date }}",
+                        "description": "={{ $json.description }}",
+                        "amount": "={{ $json.amount }}",
+                        "type": "={{ $json.type }}",
+                        "balance_after": "={{ $json.balance_after }}",
+                        "imported_at": "={{ $now.toISO() }}"
+                    }
+                },
+                "options": {}
+            },
+            "id": "save-transactions",
+            "name": "Save to Sheets",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.7,
+            "position": [
+                2000,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "documentId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Processing_Log",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "matchingColumns": [
+                        "processing_id"
+                    ],
+                    "value": {
+                        "status": "COMPLETED",
+                        "transactions_count": "={{ $('Validate and Parse').item.json.transactions.length }}",
+                        "confidence": "={{ $('Validate and Parse').item.json.validation.confidence }}",
+                        "completed_at": "={{ $now.toISO() }}"
+                    }
+                },
+                "options": {}
+            },
+            "id": "update-log-success",
+            "name": "Update Log SUCCESS",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.7,
+            "position": [
+                2220,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "message",
+                "operation": "sendMessage",
+                "chatId": "",
+                "text": "=✅ WYCIĄG PRZETWORZONY\n\n📄 {{ $('Extract Metadata').item.json.file_name }}\n🏦 Bank: {{ $('Validate and Parse').item.json.document_info.bank_name }}\n💰 Saldo: {{ $('Validate and Parse').item.json.balances.closing_balance }} PLN\n📊 Transakcji: {{ $('Validate and Parse').item.json.transactions.length }}\n🎯 Confidence: {{ ($('Validate and Parse').item.json.validation.confidence * 100).toFixed(1) }}%",
+                "additionalFields": {}
+            },
+            "id": "notify-success",
+            "name": "Telegram Success",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                2440,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Errors",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "timestamp": "={{ $now.toISO() }}",
+                        "processing_id": "={{ $('Extract Metadata').item.json.processing_id }}",
+                        "filename": "={{ $('Extract Metadata').item.json.file_name }}",
+                        "error_type": "VALIDATION_FAILED",
+                        "details": "={{ JSON.stringify($('Validate and Parse').item.json.validation.errors) }}",
+                        "confidence": "={{ $('Validate and Parse').item.json.validation.confidence }}",
+                        "resolved": false
+                    }
+                },
+                "options": {}
+            },
+            "id": "log-error",
+            "name": "Log Error",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.7,
+            "position": [
+                1780,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "message",
+                "operation": "sendMessage",
+                "chatId": "",
+                "text": "=⚠️ BŁĄD WALIDACJI\n\n📄 {{ $('Extract Metadata').item.json.file_name }}\n❌ Błędy: {{ $('Validate and Parse').item.json.validation.errors.join(', ') }}\n📊 Confidence: {{ ($('Validate and Parse').item.json.validation.confidence * 100).toFixed(1) }}%",
+                "additionalFields": {}
+            },
+            "id": "notify-error",
+            "name": "Telegram Error",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                2000,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "New Bank Statement": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Metadata",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract Metadata": {
+            "main": [
+                [
+                    {
+                        "node": "Log Start",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Log Start": {
+            "main": [
+                [
+                    {
+                        "node": "Download File",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Download File": {
+            "main": [
+                [
+                    {
+                        "node": "GPT4o Vision Extract",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "GPT4o Vision Extract": {
+            "main": [
+                [
+                    {
+                        "node": "Validate and Parse",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate and Parse": {
+            "main": [
+                [
+                    {
+                        "node": "Valid Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Valid Data": {
+            "main": [
+                [
+                    {
+                        "node": "Split Transactions",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Log Error",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Transactions": {
+            "main": [
+                [
+                    {
+                        "node": "Save to Sheets",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Save to Sheets": {
+            "main": [
+                [
+                    {
+                        "node": "Update Log SUCCESS",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Log SUCCESS": {
+            "main": [
+                [
+                    {
+                        "node": "Telegram Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Log Error": {
+            "main": [
+                [
+                    {
+                        "node": "Telegram Error",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1",
+        "saveManualExecutions": true
+    },
+    "staticData": null,
+    "versionId": "320dfeb5-cc1c-4f49-b037-531b81436c43",
+    "createdAt": "2025-10-18T06:04:22.874Z",
+    "updatedAt": "2025-10-18T06:04:22.874Z"
+}

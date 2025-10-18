@@ -1,0 +1,1347 @@
+{
+    "name": "🏦 Bank Statement Processor - Enterprise Edition",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "triggerAtHour": 2
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "node-trigger-1",
+            "name": "⏰ Schedule Every 2 Hours",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                200,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "event": "fileCreated",
+                "driveId": {
+                    "__rl": true,
+                    "value": "My Drive",
+                    "mode": "list"
+                },
+                "folderId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list",
+                    "__regex": ".*wyciagi-bankowe.*"
+                },
+                "options": {}
+            },
+            "id": "node-drive-trigger",
+            "name": "📁 Google Drive - New Files",
+            "type": "n8n-nodes-base.googleDriveTrigger",
+            "typeVersion": 1,
+            "position": [
+                200,
+                500
+            ],
+            "credentials": {
+                "googleDriveOAuth2Api": {
+                    "id": "google-drive-creds",
+                    "name": "Google Drive OAuth2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "metadata-1",
+                            "name": "file_id",
+                            "value": "={{ $json.id }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "metadata-2",
+                            "name": "file_name",
+                            "value": "={{ $json.name }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "metadata-3",
+                            "name": "file_size",
+                            "value": "={{ $json.size }}",
+                            "type": "number"
+                        },
+                        {
+                            "id": "metadata-4",
+                            "name": "mime_type",
+                            "value": "={{ $json.mimeType }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "metadata-5",
+                            "name": "upload_timestamp",
+                            "value": "={{ $now.toISO() }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "metadata-6",
+                            "name": "processing_id",
+                            "value": "={{ $workflow.id }}_{{ $runIndex }}_{{ $now.toMillis() }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "node-extract-metadata",
+            "name": "📋 Extract Metadata",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                400,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Processing_Log",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "processing_id": "={{ $json.processing_id }}",
+                        "timestamp": "={{ $json.upload_timestamp }}",
+                        "filename": "={{ $json.file_name }}",
+                        "file_size": "={{ $json.file_size }}",
+                        "status": "STARTED",
+                        "model_used": "",
+                        "processing_time_ms": ""
+                    }
+                },
+                "options": {}
+            },
+            "id": "node-log-start",
+            "name": "📊 Log Processing Start",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.7,
+            "position": [
+                600,
+                500
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "google-sheets-creds",
+                    "name": "Google Sheets OAuth2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "fileId": {
+                    "__rl": true,
+                    "value": "={{ $json.file_id }}",
+                    "mode": "id"
+                },
+                "options": {}
+            },
+            "id": "node-download-file",
+            "name": "⬇️ Download File from Drive",
+            "type": "n8n-nodes-base.googleDrive",
+            "typeVersion": 3,
+            "position": [
+                800,
+                500
+            ],
+            "credentials": {
+                "googleDriveOAuth2Api": {
+                    "id": "google-drive-creds",
+                    "name": "Google Drive OAuth2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "rules": {
+                    "values": [
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": ""
+                                },
+                                "conditions": [
+                                    {
+                                        "leftValue": "={{ $json.mime_type }}",
+                                        "rightValue": "application/pdf",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    }
+                                ],
+                                "combinator": "and"
+                            },
+                            "renameOutput": true,
+                            "outputKey": "PDF Document"
+                        },
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": ""
+                                },
+                                "conditions": [
+                                    {
+                                        "leftValue": "={{ $json.mime_type }}",
+                                        "rightValue": "image/",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "contains"
+                                        }
+                                    }
+                                ],
+                                "combinator": "and"
+                            },
+                            "renameOutput": true,
+                            "outputKey": "Image File"
+                        },
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": ""
+                                },
+                                "conditions": [
+                                    {
+                                        "leftValue": "={{ $json.mime_type }}",
+                                        "rightValue": "multipart",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "contains"
+                                        }
+                                    }
+                                ],
+                                "combinator": "and"
+                            },
+                            "renameOutput": true,
+                            "outputKey": "Multi-page Document"
+                        }
+                    ]
+                },
+                "options": {
+                    "fallbackOutput": "extra"
+                }
+            },
+            "id": "node-router-type",
+            "name": "🔀 Route by Document Type",
+            "type": "n8n-nodes-base.switch",
+            "typeVersion": 3.2,
+            "position": [
+                1000,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "pdf",
+                "binaryPropertyName": "data",
+                "options": {
+                    "maxPages": 50,
+                    "password": "",
+                    "joinPages": false
+                }
+            },
+            "id": "node-extract-pdf",
+            "name": "📄 Extract PDF Text",
+            "type": "n8n-nodes-base.extractFromFile",
+            "typeVersion": 1,
+            "position": [
+                1200,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "multiStep",
+                "dataPropertyName": "data",
+                "operations": {
+                    "operations": [
+                        {
+                            "operation": "resize",
+                            "width": 2000,
+                            "height": 2000,
+                            "resizeOption": "maximumArea"
+                        },
+                        {
+                            "operation": "rotate",
+                            "rotate": 0,
+                            "backgroundColor": "#ffffffff"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "node-enhance-image",
+            "name": "🎨 Enhance Image Quality",
+            "type": "n8n-nodes-base.editImage",
+            "typeVersion": 1,
+            "position": [
+                1200,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "text",
+                "operation": "message",
+                "modelId": {
+                    "__rl": true,
+                    "value": "gpt-4o",
+                    "mode": "list"
+                },
+                "messages": {
+                    "values": [
+                        {
+                            "role": "system",
+                            "content": "Jesteś ekspertem od klasyfikacji dokumentów finansowych.\n\nZADANIE: Określ typ dokumentu i jego jakość.\n\nKATEGORIE:\n1. BANK_STATEMENT - wyciąg bankowy (rachunki, transakcje)\n2. INVOICE - faktura\n3. RECEIPT - paragon\n4. CONTRACT - umowa\n5. OTHER - inny dokument\n6. UNREADABLE - nieczytelny/uszkodzony\n\nWYMAGANY FORMAT JSON:\n{\n  \"document_type\": \"BANK_STATEMENT|INVOICE|RECEIPT|CONTRACT|OTHER|UNREADABLE\",\n  \"confidence\": 0.95,\n  \"quality_score\": 0.9,\n  \"detected_language\": \"pl\",\n  \"needs_preprocessing\": false,\n  \"issues\": [\"rotated\", \"low_contrast\", \"blurred\"],\n  \"bank_name\": \"nazwa banku (jeśli wyciąg)\",\n  \"reasoning\": \"krótkie uzasadnienie\"\n}\n\nZWRÓĆ TYLKO JSON, bez dodatkowego tekstu."
+                        },
+                        {
+                            "role": "user",
+                            "content": "=Klasyfikuj ten dokument:\n\nNazwa pliku: {{ $json.file_name }}\nRozmiar: {{ $json.file_size }} bajtów\nTyp MIME: {{ $json.mime_type }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "temperature": 0.1,
+                    "maxTokens": 500
+                }
+            },
+            "id": "node-classify-doc",
+            "name": "🤖 AI Document Classifier",
+            "type": "@n8n/n8n-nodes-langchain.openAi",
+            "typeVersion": 1.8,
+            "position": [
+                1400,
+                400
+            ],
+            "credentials": {
+                "openAiApi": {
+                    "id": "openai-creds",
+                    "name": "OpenAI API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": ""
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.message.content }}",
+                            "rightValue": "BANK_STATEMENT",
+                            "operator": {
+                                "type": "string",
+                                "operation": "contains"
+                            }
+                        },
+                        {
+                            "leftValue": "={{ JSON.parse($json.message.content).confidence }}",
+                            "rightValue": 0.7,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gt"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "node-check-classification",
+            "name": "✅ Is Bank Statement?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.1,
+            "position": [
+                1600,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "image",
+                "operation": "analyze",
+                "modelId": {
+                    "__rl": true,
+                    "value": "gpt-4o",
+                    "mode": "list"
+                },
+                "prompt": "=ANALIZA POLSKIEGO WYCIĄGU BANKOWEGO\n\nDokument: {{ $('Extract Metadata').item.json.file_name }}\nBank: {{ JSON.parse($('AI Document Classifier').item.json.message.content).bank_name || 'NIE ROZPOZNANO' }}\n\nZADANIE: Wyekstrahuj ALL dane z wyciągu bankowego w formacie JSON.\n\nWYMAGANY SCHEMAT JSON:\n{\n  \"document_info\": {\n    \"bank_name\": \"string\",\n    \"account_holder\": \"string\",\n    \"account_number\": \"PL...\",\n    \"statement_period\": {\n      \"from\": \"YYYY-MM-DD\",\n      \"to\": \"YYYY-MM-DD\"\n    },\n    \"statement_number\": \"string\",\n    \"currency\": \"PLN\"\n  },\n  \"balances\": {\n    \"opening_balance\": 0.00,\n    \"closing_balance\": 0.00,\n    \"total_income\": 0.00,\n    \"total_expense\": 0.00\n  },\n  \"transactions\": [\n    {\n      \"date\": \"YYYY-MM-DD\",\n      \"posting_date\": \"YYYY-MM-DD\",\n      \"description\": \"string\",\n      \"counterparty\": \"string\",\n      \"amount\": -150.50,\n      \"type\": \"debit\",\n      \"balance_after\": 5000.00,\n      \"category\": \"transfer|payment|withdrawal|deposit|fee\",\n      \"reference_number\": \"string\"\n    }\n  ],\n  \"metadata\": {\n    \"total_transactions\": 0,\n    \"debit_count\": 0,\n    \"credit_count\": 0,\n    \"confidence_score\": 0.95,\n    \"extraction_notes\": \"string\"\n  }\n}\n\nWAŻNE ZASADY:\n1. WSZYSTKIE daty w formacie YYYY-MM-DD\n2. Kwoty jako liczby (FLOAT) z kropką jako separatorem dziesiętnym\n3. Kwoty debetowe (wychodzące) jako LICZBY UJEMNE\n4. Kwoty kredytowe (przychodzące) jako LICZBY DODATNIE\n5. Opis transakcji: usuń nadmiarowe spacje, zachowaj polskie znaki\n6. Jeśli brak pewności - ustaw confidence_score < 0.9\n\nWERYFIKACJA MATEMATYCZNA:\n- Saldo końcowe = Saldo początkowe + suma ALL transakcji\n- total_income = suma transakcji typu 'credit'\n- total_expense = suma transakcji typu 'debit' (wartość bezwzględna)\n\nZWRÓĆ TYLKO CZYSTY JSON, bez markdown, bez dodatkowego tekstu.",
+                "options": {
+                    "temperature": 0.1,
+                    "maxTokens": 4000
+                }
+            },
+            "id": "node-extract-gpt4o",
+            "name": "🧠 GPT-4o Vision - Primary Extraction",
+            "type": "@n8n/n8n-nodes-langchain.openAi",
+            "typeVersion": 1.8,
+            "position": [
+                1800,
+                300
+            ],
+            "credentials": {
+                "openAiApi": {
+                    "id": "openai-creds",
+                    "name": "OpenAI API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "schemaType": "manual",
+                "inputSchema": "={\n  \"type\": \"object\",\n  \"properties\": {\n    \"document_info\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"bank_name\": {\"type\": \"string\"},\n        \"account_holder\": {\"type\": \"string\"},\n        \"account_number\": {\"type\": \"string\"},\n        \"statement_period\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"from\": {\"type\": \"string\"},\n            \"to\": {\"type\": \"string\"}\n          }\n        },\n        \"statement_number\": {\"type\": \"string\"},\n        \"currency\": {\"type\": \"string\"}\n      },\n      \"required\": [\"bank_name\", \"account_number\", \"currency\"]\n    },\n    \"balances\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"opening_balance\": {\"type\": \"number\"},\n        \"closing_balance\": {\"type\": \"number\"},\n        \"total_income\": {\"type\": \"number\"},\n        \"total_expense\": {\"type\": \"number\"}\n      }\n    },\n    \"transactions\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"date\": {\"type\": \"string\"},\n          \"description\": {\"type\": \"string\"},\n          \"amount\": {\"type\": \"number\"},\n          \"type\": {\"type\": \"string\"},\n          \"balance_after\": {\"type\": \"number\"}\n        }\n      }\n    },\n    \"metadata\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"confidence_score\": {\"type\": \"number\"}\n      }\n    }\n  },\n  \"required\": [\"document_info\", \"transactions\", \"metadata\"]\n}",
+                "autoFix": true
+            },
+            "id": "node-structured-parser",
+            "name": "📦 Structured Output Parser",
+            "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+            "typeVersion": 1.3,
+            "position": [
+                2000,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": ""
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.metadata?.confidence_score || 0 }}",
+                            "rightValue": 0.85,
+                            "operator": {
+                                "type": "number",
+                                "operation": "lt"
+                            }
+                        }
+                    ],
+                    "combinator": "or"
+                },
+                "options": {}
+            },
+            "id": "node-check-confidence",
+            "name": "❓ Low Confidence?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.1,
+            "position": [
+                2200,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://api.mistral.ai/v1/ocr",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "=Bearer {{ $credentials.mistralApiKey }}"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "multipart/form-data"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "file",
+                            "value": "={{ $binary.data }}"
+                        },
+                        {
+                            "name": "model",
+                            "value": "mistral-ocr"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "node-mistral-fallback",
+            "name": "🔄 Mistral OCR - Fallback",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                2400,
+                500
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "mistral-api-header",
+                    "name": "Mistral API Header Auth"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "merge",
+                "mode": "chooseBranch",
+                "chooseBranchMode": "specifyInputIndexes",
+                "inputIndexes": "0,1",
+                "options": {}
+            },
+            "id": "node-merge-results",
+            "name": "🔗 Merge AI Results",
+            "type": "n8n-nodes-base.merge",
+            "typeVersion": 3,
+            "position": [
+                2600,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "=WALIDACJA WYCIĄGU BANKOWEGO\n\nDane do weryfikacji:\n{{ JSON.stringify($json, null, 2) }}\n\nZADANIE:\n1. Sprawdź poprawność matematyczną:\n   - Czy saldo końcowe = saldo początkowe + suma transakcji?\n   - Czy suma total_income + total_expense zgadza się?\n2. Zweryfikuj format dat (YYYY-MM-DD)\n3. Sprawdź format IBAN (jeśli polski: PL + 26 cyfr)\n4. Wykryj duplikaty transakcji\n5. Sprawdź czy kwoty mają właściwe znaki (+/-)\n\nZWRÓĆ JSON:\n{\n  \"is_valid\": true/false,\n  \"confidence\": 0.95,\n  \"errors\": [\"lista błędów\"],\n  \"warnings\": [\"lista ostrzeżeń\"],\n  \"corrected_data\": { /* poprawione dane jeśli możliwe */ },\n  \"validation_details\": {\n    \"balance_check\": true/false,\n    \"date_format_check\": true/false,\n    \"iban_check\": true/false,\n    \"duplicates_found\": 0,\n    \"sign_errors\": 0\n  }\n}",
+                "hasOutputParser": true,
+                "options": {}
+            },
+            "id": "node-ai-validator",
+            "name": "🔍 AI Agent - Validator",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 2.2,
+            "position": [
+                2800,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "name": "calculator",
+                "description": "Kalkulator do weryfikacji matematycznej sum i sald"
+            },
+            "id": "node-tool-calculator",
+            "name": "🧮 Tool: Calculator",
+            "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+            "typeVersion": 1,
+            "position": [
+                2800,
+                600
+            ]
+        },
+        {
+            "parameters": {
+                "name": "iban_validator",
+                "description": "Walidator numerów IBAN dla polskich rachunków bankowych",
+                "language": "javaScript",
+                "jsCode": "// Walidacja polskiego numeru IBAN\nconst iban = (input.iban || '').replace(/\\s/g, '');\n\nif (!iban.startsWith('PL')) {\n  return {\n    valid: false,\n    error: 'IBAN musi zaczynać się od PL'\n  };\n}\n\nif (iban.length !== 28) {\n  return {\n    valid: false,\n    error: `IBAN ma ${iban.length} znaków, powinien mieć 28`\n  };\n}\n\nconst numbers = iban.slice(4) + '2521' + iban.slice(2, 4);\nlet checksum = BigInt(numbers);\nconst mod97 = checksum % 97n;\n\nreturn {\n  valid: mod97 === 1n,\n  iban: iban,\n  formatted: iban.match(/.{1,4}/g).join(' '),\n  checksum_valid: mod97 === 1n\n};",
+                "specifyInputSchema": true,
+                "schemaType": "fromJson",
+                "jsonSchemaExample": "{\n  \"iban\": \"PL61109010140000071219812874\"\n}"
+            },
+            "id": "node-tool-iban",
+            "name": "🏦 Tool: IBAN Validator",
+            "type": "@n8n/n8n-nodes-langchain.toolCode",
+            "typeVersion": 1.3,
+            "position": [
+                2800,
+                700
+            ]
+        },
+        {
+            "parameters": {
+                "name": "date_parser",
+                "description": "Parser i walidator dat w różnych formatach do YYYY-MM-DD",
+                "language": "javaScript",
+                "jsCode": "// Parsowanie i walidacja dat\nconst dateStr = input.date_string;\n\n// Obsługa różnych formatów polskich dat\nconst patterns = [\n  /^(\\d{4})-(\\d{2})-(\\d{2})$/,  // YYYY-MM-DD\n  /^(\\d{2})\\.(\\d{2})\\.(\\d{4})$/,  // DD.MM.YYYY\n  /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/,  // DD/MM/YYYY\n  /^(\\d{2})-(\\d{2})-(\\d{4})$/   // DD-MM-YYYY\n];\n\nfor (const pattern of patterns) {\n  const match = dateStr.match(pattern);\n  if (match) {\n    let year, month, day;\n    \n    if (match[1].length === 4) {\n      // YYYY-MM-DD format\n      [, year, month, day] = match;\n    } else {\n      // DD.MM.YYYY format\n      [, day, month, year] = match;\n    }\n    \n    const date = new Date(`${year}-${month}-${day}`);\n    \n    if (!isNaN(date.getTime())) {\n      return {\n        valid: true,\n        original: dateStr,\n        parsed: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,\n        iso_format: date.toISOString().split('T')[0],\n        day_of_week: date.toLocaleDateString('pl-PL', { weekday: 'long' })\n      };\n    }\n  }\n}\n\nreturn {\n  valid: false,\n  original: dateStr,\n  error: 'Nierozpoznany format daty'\n};",
+                "specifyInputSchema": true,
+                "schemaType": "fromJson",
+                "jsonSchemaExample": "{\n  \"date_string\": \"15.03.2024\"\n}"
+            },
+            "id": "node-tool-dateparser",
+            "name": "📅 Tool: Date Parser",
+            "type": "@n8n/n8n-nodes-langchain.toolCode",
+            "typeVersion": 1.3,
+            "position": [
+                2800,
+                800
+            ]
+        },
+        {
+            "parameters": {
+                "schemaType": "manual",
+                "inputSchema": "={\n  \"type\": \"object\",\n  \"properties\": {\n    \"is_valid\": {\"type\": \"boolean\"},\n    \"confidence\": {\"type\": \"number\"},\n    \"errors\": {\"type\": \"array\"},\n    \"warnings\": {\"type\": \"array\"},\n    \"validation_details\": {\"type\": \"object\"}\n  }\n}",
+                "autoFix": false
+            },
+            "id": "node-validation-parser",
+            "name": "✔️ Validation Output Parser",
+            "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+            "typeVersion": 1.3,
+            "position": [
+                3000,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": ""
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.is_valid }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true"
+                            }
+                        },
+                        {
+                            "leftValue": "={{ $json.confidence }}",
+                            "rightValue": 0.9,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gte"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "node-check-valid",
+            "name": "✅ Validation Passed?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.1,
+            "position": [
+                3200,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "inputBinaryFieldName": "transactions",
+                "options": {}
+            },
+            "id": "node-split-transactions",
+            "name": "📊 Split Transactions",
+            "type": "n8n-nodes-base.splitOut",
+            "typeVersion": 1,
+            "position": [
+                3400,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Transactions",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "processing_id": "={{ $('Extract Metadata').item.json.processing_id }}",
+                        "bank_name": "={{ $('Merge AI Results').item.json.document_info.bank_name }}",
+                        "account_number": "={{ $('Merge AI Results').item.json.document_info.account_number }}",
+                        "statement_period_from": "={{ $('Merge AI Results').item.json.document_info.statement_period.from }}",
+                        "statement_period_to": "={{ $('Merge AI Results').item.json.document_info.statement_period.to }}",
+                        "transaction_date": "={{ $json.date }}",
+                        "posting_date": "={{ $json.posting_date || $json.date }}",
+                        "description": "={{ $json.description }}",
+                        "counterparty": "={{ $json.counterparty || '' }}",
+                        "amount": "={{ $json.amount }}",
+                        "type": "={{ $json.type }}",
+                        "balance_after": "={{ $json.balance_after }}",
+                        "category": "={{ $json.category || 'UNCATEGORIZED' }}",
+                        "reference_number": "={{ $json.reference_number || '' }}",
+                        "confidence": "={{ $('AI Agent - Validator').item.json.confidence }}",
+                        "status": "PROCESSED",
+                        "imported_at": "={{ $now.toISO() }}"
+                    }
+                },
+                "options": {}
+            },
+            "id": "node-append-transactions",
+            "name": "💾 Append to Transactions Sheet",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.7,
+            "position": [
+                3600,
+                300
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "google-sheets-creds",
+                    "name": "Google Sheets OAuth2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Errors",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "timestamp": "={{ $now.toISO() }}",
+                        "processing_id": "={{ $('Extract Metadata').item.json.processing_id }}",
+                        "filename": "={{ $('Extract Metadata').item.json.file_name }}",
+                        "error_type": "VALIDATION_FAILED",
+                        "details": "={{ JSON.stringify($('AI Agent - Validator').item.json.errors) }}",
+                        "warnings": "={{ JSON.stringify($('AI Agent - Validator').item.json.warnings) }}",
+                        "confidence": "={{ $('AI Agent - Validator').item.json.confidence }}",
+                        "resolved": false,
+                        "assigned_to": ""
+                    }
+                },
+                "options": {}
+            },
+            "id": "node-log-error",
+            "name": "⚠️ Log to Errors Sheet",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.7,
+            "position": [
+                3400,
+                500
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "google-sheets-creds",
+                    "name": "Google Sheets OAuth2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "message",
+                "operation": "sendMessage",
+                "chatId": "",
+                "text": "=⚠️ **BŁĄD WALIDACJI WYCIĄGU**\n\n📄 Plik: `{{ $('Extract Metadata').item.json.file_name }}`\n🆔 ID: `{{ $('Extract Metadata').item.json.processing_id }}`\n\n❌ **Błędy:**\n{{ $('AI Agent - Validator').item.json.errors.map((e, i) => `${i+1}. ${e}`).join('\\n') }}\n\n⚡ **Ostrzeżenia:**\n{{ $('AI Agent - Validator').item.json.warnings.map((w, i) => `${i+1}. ${w}`).join('\\n') }}\n\n📊 Confidence: {{ ($('AI Agent - Validator').item.json.confidence * 100).toFixed(1) }}%\n\n🔗 [Sprawdź w Google Sheets](https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID)",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "id": "node-telegram-alert",
+            "name": "📱 Send Telegram Alert",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                3400,
+                600
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "telegram-creds",
+                    "name": "Telegram Bot API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "documentId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Processing_Log",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "matchingColumns": [
+                        "processing_id"
+                    ],
+                    "value": {
+                        "status": "COMPLETED",
+                        "model_used": "GPT-4o",
+                        "processing_time_ms": "={{ $now.diff($('Extract Metadata').item.json.upload_timestamp) }}",
+                        "transactions_count": "={{ $('Merge AI Results').item.json.transactions.length }}",
+                        "confidence": "={{ $('AI Agent - Validator').item.json.confidence }}",
+                        "completed_at": "={{ $now.toISO() }}"
+                    }
+                },
+                "options": {}
+            },
+            "id": "node-update-log-success",
+            "name": "✅ Update Log - SUCCESS",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.7,
+            "position": [
+                3800,
+                300
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "google-sheets-creds",
+                    "name": "Google Sheets OAuth2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "moveFileFolder",
+                "fileId": {
+                    "__rl": true,
+                    "value": "={{ $('Extract Metadata').item.json.file_id }}",
+                    "mode": "id"
+                },
+                "driveId": {
+                    "__rl": true,
+                    "value": "My Drive",
+                    "mode": "list"
+                },
+                "folderId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list",
+                    "__regex": ".*archive.*"
+                },
+                "options": {}
+            },
+            "id": "node-archive-file",
+            "name": "📦 Archive Original File",
+            "type": "n8n-nodes-base.googleDrive",
+            "typeVersion": 3,
+            "position": [
+                4000,
+                300
+            ],
+            "credentials": {
+                "googleDriveOAuth2Api": {
+                    "id": "google-drive-creds",
+                    "name": "Google Drive OAuth2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "message",
+                "operation": "sendMessage",
+                "chatId": "",
+                "text": "=✅ **WYCIĄG PRZETWORZONY POMYŚLNIE**\n\n📄 Plik: `{{ $('Extract Metadata').item.json.file_name }}`\n🏦 Bank: **{{ $('Merge AI Results').item.json.document_info.bank_name }}**\n📅 Okres: {{ $('Merge AI Results').item.json.document_info.statement_period.from }} → {{ $('Merge AI Results').item.json.document_info.statement_period.to }}\n\n💰 **Podsumowanie:**\n• Saldo początkowe: {{ $('Merge AI Results').item.json.balances.opening_balance.toFixed(2) }} PLN\n• Saldo końcowe: {{ $('Merge AI Results').item.json.balances.closing_balance.toFixed(2) }} PLN\n• Przychody: +{{ $('Merge AI Results').item.json.balances.total_income.toFixed(2) }} PLN\n• Wydatki: -{{ Math.abs($('Merge AI Results').item.json.balances.total_expense).toFixed(2) }} PLN\n\n📊 Transakcji: **{{ $('Merge AI Results').item.json.transactions.length }}**\n🎯 Confidence: **{{ ($('AI Agent - Validator').item.json.confidence * 100).toFixed(1) }}%**\n⏱️ Czas: {{ ($now.diff($('Extract Metadata').item.json.upload_timestamp) / 1000).toFixed(1) }}s\n\n🔗 [Zobacz w Google Sheets](https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID)",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "id": "node-telegram-success",
+            "name": "📱 Send Success Notification",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                4200,
+                300
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "telegram-creds",
+                    "name": "Telegram Bot API"
+                }
+            }
+        },
+        {
+            "parameters": {},
+            "id": "node-error-trigger",
+            "name": "⚡ Error Trigger",
+            "type": "n8n-nodes-base.errorTrigger",
+            "typeVersion": 1,
+            "position": [
+                200,
+                900
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Errors",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "timestamp": "={{ $now.toISO() }}",
+                        "processing_id": "={{ $('Extract Metadata')?.item?.json?.processing_id || 'N/A' }}",
+                        "filename": "={{ $('Extract Metadata')?.item?.json?.file_name || 'N/A' }}",
+                        "error_type": "SYSTEM_ERROR",
+                        "details": "={{ $json.error.message }}",
+                        "stack_trace": "={{ $json.error.stack }}",
+                        "node_name": "={{ $json.node.name }}",
+                        "resolved": false,
+                        "assigned_to": ""
+                    }
+                },
+                "options": {}
+            },
+            "id": "node-log-system-error",
+            "name": "🔴 Log System Error",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.7,
+            "position": [
+                400,
+                900
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "google-sheets-creds",
+                    "name": "Google Sheets OAuth2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "message",
+                "operation": "sendMessage",
+                "chatId": "",
+                "text": "=🔴 **BŁĄD SYSTEMOWY**\n\n⚠️ Workflow: `Bank Statement Processor`\n🆔 Execution ID: `{{ $execution.id }}`\n🕐 Czas: {{ $now.format('yyyy-MM-dd HH:mm:ss') }}\n\n❌ **Błąd w node:** `{{ $json.node.name }}`\n\n📝 **Szczegóły:**\n```\n{{ $json.error.message }}\n```\n\n📄 Plik: {{ $('Extract Metadata')?.item?.json?.file_name || 'N/A' }}\n\n🔧 Sprawdź logi w n8n UI",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "id": "node-telegram-error",
+            "name": "📱 Alert System Error",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                600,
+                900
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "telegram-creds",
+                    "name": "Telegram Bot API"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Google Drive - New Files": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Metadata",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract Metadata": {
+            "main": [
+                [
+                    {
+                        "node": "Log Processing Start",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Log Processing Start": {
+            "main": [
+                [
+                    {
+                        "node": "Download File from Drive",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Download File from Drive": {
+            "main": [
+                [
+                    {
+                        "node": "Route by Document Type",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Route by Document Type": {
+            "main": [
+                [
+                    {
+                        "node": "Extract PDF Text",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Enhance Image Quality",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                []
+            ]
+        },
+        "Extract PDF Text": {
+            "main": [
+                [
+                    {
+                        "node": "AI Document Classifier",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Enhance Image Quality": {
+            "main": [
+                [
+                    {
+                        "node": "AI Document Classifier",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Document Classifier": {
+            "main": [
+                [
+                    {
+                        "node": "Is Bank Statement?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Bank Statement?": {
+            "main": [
+                [
+                    {
+                        "node": "GPT-4o Vision - Primary Extraction",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Log to Errors Sheet",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "GPT-4o Vision - Primary Extraction": {
+            "main": [
+                [
+                    {
+                        "node": "Structured Output Parser",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Structured Output Parser": {
+            "ai_outputParser": [
+                [
+                    {
+                        "node": "GPT-4o Vision - Primary Extraction",
+                        "type": "ai_outputParser",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Structured Output Parser": {
+            "main": [
+                [
+                    {
+                        "node": "Low Confidence?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Low Confidence?": {
+            "main": [
+                [
+                    {
+                        "node": "Mistral OCR - Fallback",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Merge AI Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Mistral OCR - Fallback": {
+            "main": [
+                [
+                    {
+                        "node": "Merge AI Results",
+                        "type": "main",
+                        "index": 1
+                    }
+                ]
+            ]
+        },
+        "Merge AI Results": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent - Validator",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent - Validator": {
+            "main": [
+                [
+                    {
+                        "node": "Validation Output Parser",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Tool: Calculator": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "AI Agent - Validator",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Tool: IBAN Validator": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "AI Agent - Validator",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Tool: Date Parser": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "AI Agent - Validator",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validation Output Parser": {
+            "ai_outputParser": [
+                [
+                    {
+                        "node": "AI Agent - Validator",
+                        "type": "ai_outputParser",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validation Output Parser": {
+            "main": [
+                [
+                    {
+                        "node": "Validation Passed?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validation Passed?": {
+            "main": [
+                [
+                    {
+                        "node": "Split Transactions",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Log to Errors Sheet",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Send Telegram Alert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Transactions": {
+            "main": [
+                [
+                    {
+                        "node": "Append to Transactions Sheet",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Append to Transactions Sheet": {
+            "main": [
+                [
+                    {
+                        "node": "Update Log - SUCCESS",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Log - SUCCESS": {
+            "main": [
+                [
+                    {
+                        "node": "Archive Original File",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Archive Original File": {
+            "main": [
+                [
+                    {
+                        "node": "Send Success Notification",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Error Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Log System Error",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Log System Error": {
+            "main": [
+                [
+                    {
+                        "node": "Alert System Error",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "settings": {
+        "executionOrder": "v1",
+        "saveManualExecutions": true,
+        "callerPolicy": "workflowsFromSameOwner",
+        "errorWorkflow": ""
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "createdAt": "2025-01-18T10:00:00.000Z",
+            "updatedAt": "2025-01-18T10:00:00.000Z",
+            "id": "1",
+            "name": "Finance"
+        },
+        {
+            "createdAt": "2025-01-18T10:00:00.000Z",
+            "updatedAt": "2025-01-18T10:00:00.000Z",
+            "id": "2",
+            "name": "AI"
+        },
+        {
+            "createdAt": "2025-01-18T10:00:00.000Z",
+            "updatedAt": "2025-01-18T10:00:00.000Z",
+            "id": "3",
+            "name": "OCR"
+        },
+        {
+            "createdAt": "2025-01-18T10:00:00.000Z",
+            "updatedAt": "2025-01-18T10:00:00.000Z",
+            "id": "4",
+            "name": "Enterprise"
+        }
+    ],
+    "triggerCount": 2,
+    "updatedAt": "2025-01-18T10:00:00.000Z",
+    "versionId": "1"
+}

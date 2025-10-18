@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "n8n-mcp": {
+      "command": "node",
+      "args": ["/Users/Wiktor/TESTPROG BOX/n8n-2lokal/dist/mcp/index.js"],
+      "env": {
+        "NODE_ENV": "production",
+        "LOG_LEVEL": "error",
+        "MCP_MODE": "stdio",
+        "DISABLE_CONSOLE_OUTPUT": "true",
+        "N8N_API_URL": "http://localhost:5679",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZmI1YWEzNy02N2Y3LTQ1NzQtYWM4NC1iMTJlZGIwOTcxNWYiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYwMjI2MzA0fQ.LjdorRgj2LKUoBiIJ0nUzYW_Wo62w-dfcwlTA73hdsw"
+      }
+    }
+  }
+}

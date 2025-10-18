@@ -3,7 +3,7 @@
  * Applies diff operations to n8n workflows
  */
 
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 import {
   WorkflowDiffOperation,
   WorkflowDiffRequest,
@@ -26,13 +26,16 @@ import {
   AddTagOperation,
   RemoveTagOperation,
   CleanStaleConnectionsOperation,
-  ReplaceConnectionsOperation
-} from '../types/workflow-diff';
-import { Workflow, WorkflowNode, WorkflowConnection } from '../types/n8n-api';
-import { Logger } from '../utils/logger';
-import { validateWorkflowNode, validateWorkflowConnections } from './n8n-validation';
+  ReplaceConnectionsOperation,
+} from "../types/workflow-diff";
+import { Workflow, WorkflowNode, WorkflowConnection } from "../types/n8n-api";
+import { Logger } from "../utils/logger";
+import {
+  validateWorkflowNode,
+  validateWorkflowConnections,
+} from "./n8n-validation";
 
-const logger = new Logger({ prefix: '[WorkflowDiffEngine]' });
+const logger = new Logger({ prefix: "[WorkflowDiffEngine]" });
 
 export class WorkflowDiffEngine {
   /**
@@ -47,9 +50,22 @@ export class WorkflowDiffEngine {
       const workflowCopy = JSON.parse(JSON.stringify(workflow));
 
       // Group operations by type for two-pass processing
-      const nodeOperationTypes = ['addNode', 'removeNode', 'updateNode', 'moveNode', 'enableNode', 'disableNode'];
-      const nodeOperations: Array<{ operation: WorkflowDiffOperation; index: number }> = [];
-      const otherOperations: Array<{ operation: WorkflowDiffOperation; index: number }> = [];
+      const nodeOperationTypes = [
+        "addNode",
+        "removeNode",
+        "updateNode",
+        "moveNode",
+        "enableNode",
+        "disableNode",
+      ];
+      const nodeOperations: Array<{
+        operation: WorkflowDiffOperation;
+        index: number;
+      }> = [];
+      const otherOperations: Array<{
+        operation: WorkflowDiffOperation;
+        index: number;
+      }> = [];
 
       request.operations.forEach((operation, index) => {
         if (nodeOperationTypes.includes(operation.type)) {
@@ -73,7 +89,7 @@ export class WorkflowDiffEngine {
             errors.push({
               operation: index,
               message: error,
-              details: operation
+              details: operation,
             });
             failedIndices.push(index);
             continue;
@@ -83,11 +99,13 @@ export class WorkflowDiffEngine {
             this.applyOperation(workflowCopy, operation);
             appliedIndices.push(index);
           } catch (error) {
-            const errorMsg = `Failed to apply operation: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            const errorMsg = `Failed to apply operation: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`;
             errors.push({
               operation: index,
               message: errorMsg,
-              details: operation
+              details: operation,
             });
             failedIndices.push(index);
           }
@@ -97,12 +115,13 @@ export class WorkflowDiffEngine {
         if (request.validateOnly) {
           return {
             success: errors.length === 0,
-            message: errors.length === 0
-              ? 'Validation successful. All operations are valid.'
-              : `Validation completed with ${errors.length} errors.`,
+            message:
+              errors.length === 0
+                ? "Validation successful. All operations are valid."
+                : `Validation completed with ${errors.length} errors.`,
             errors: errors.length > 0 ? errors : undefined,
             applied: appliedIndices,
-            failed: failedIndices
+            failed: failedIndices,
           };
         }
 
@@ -114,7 +133,7 @@ export class WorkflowDiffEngine {
           message: `Applied ${appliedIndices.length} operations, ${failedIndices.length} failed (continueOnError mode)`,
           errors: errors.length > 0 ? errors : undefined,
           applied: appliedIndices,
-          failed: failedIndices
+          failed: failedIndices,
         };
       } else {
         // Atomic mode: all operations must succeed
@@ -124,11 +143,13 @@ export class WorkflowDiffEngine {
           if (error) {
             return {
               success: false,
-              errors: [{
-                operation: index,
-                message: error,
-                details: operation
-              }]
+              errors: [
+                {
+                  operation: index,
+                  message: error,
+                  details: operation,
+                },
+              ],
             };
           }
 
@@ -137,11 +158,15 @@ export class WorkflowDiffEngine {
           } catch (error) {
             return {
               success: false,
-              errors: [{
-                operation: index,
-                message: `Failed to apply operation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                details: operation
-              }]
+              errors: [
+                {
+                  operation: index,
+                  message: `Failed to apply operation: ${
+                    error instanceof Error ? error.message : "Unknown error"
+                  }`,
+                  details: operation,
+                },
+              ],
             };
           }
         }
@@ -152,11 +177,13 @@ export class WorkflowDiffEngine {
           if (error) {
             return {
               success: false,
-              errors: [{
-                operation: index,
-                message: error,
-                details: operation
-              }]
+              errors: [
+                {
+                  operation: index,
+                  message: error,
+                  details: operation,
+                },
+              ],
             };
           }
 
@@ -165,11 +192,15 @@ export class WorkflowDiffEngine {
           } catch (error) {
             return {
               success: false,
-              errors: [{
-                operation: index,
-                message: `Failed to apply operation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                details: operation
-              }]
+              errors: [
+                {
+                  operation: index,
+                  message: `Failed to apply operation: ${
+                    error instanceof Error ? error.message : "Unknown error"
+                  }`,
+                  details: operation,
+                },
+              ],
             };
           }
         }
@@ -178,7 +209,8 @@ export class WorkflowDiffEngine {
         if (request.validateOnly) {
           return {
             success: true,
-            message: 'Validation successful. Operations are valid but not applied.'
+            message:
+              "Validation successful. Operations are valid but not applied.",
           };
         }
 
@@ -187,52 +219,61 @@ export class WorkflowDiffEngine {
           success: true,
           workflow: workflowCopy,
           operationsApplied,
-          message: `Successfully applied ${operationsApplied} operations (${nodeOperations.length} node ops, ${otherOperations.length} other ops)`
+          message: `Successfully applied ${operationsApplied} operations (${nodeOperations.length} node ops, ${otherOperations.length} other ops)`,
         };
       }
     } catch (error) {
-      logger.error('Failed to apply diff', error);
+      logger.error("Failed to apply diff", error);
       return {
         success: false,
-        errors: [{
-          operation: -1,
-          message: `Diff engine error: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }]
+        errors: [
+          {
+            operation: -1,
+            message: `Diff engine error: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`,
+          },
+        ],
       };
     }
   }
 
-
   /**
    * Validate a single operation
    */
-  private validateOperation(workflow: Workflow, operation: WorkflowDiffOperation): string | null {
+  private validateOperation(
+    workflow: Workflow,
+    operation: WorkflowDiffOperation
+  ): string | null {
     switch (operation.type) {
-      case 'addNode':
+      case "addNode":
         return this.validateAddNode(workflow, operation);
-      case 'removeNode':
+      case "removeNode":
         return this.validateRemoveNode(workflow, operation);
-      case 'updateNode':
+      case "updateNode":
         return this.validateUpdateNode(workflow, operation);
-      case 'moveNode':
+      case "moveNode":
         return this.validateMoveNode(workflow, operation);
-      case 'enableNode':
-      case 'disableNode':
+      case "enableNode":
+      case "disableNode":
         return this.validateToggleNode(workflow, operation);
-      case 'addConnection':
+      case "addConnection":
         return this.validateAddConnection(workflow, operation);
-      case 'removeConnection':
+      case "removeConnection":
         return this.validateRemoveConnection(workflow, operation);
-      case 'rewireConnection':
-        return this.validateRewireConnection(workflow, operation as RewireConnectionOperation);
-      case 'updateSettings':
-      case 'updateName':
-      case 'addTag':
-      case 'removeTag':
+      case "rewireConnection":
+        return this.validateRewireConnection(
+          workflow,
+          operation as RewireConnectionOperation
+        );
+      case "updateSettings":
+      case "updateName":
+      case "addTag":
+      case "removeTag":
         return null; // These are always valid
-      case 'cleanStaleConnections':
+      case "cleanStaleConnections":
         return this.validateCleanStaleConnections(workflow, operation);
-      case 'replaceConnections':
+      case "replaceConnections":
         return this.validateReplaceConnections(workflow, operation);
       default:
         return `Unknown operation type: ${(operation as any).type}`;
@@ -242,139 +283,197 @@ export class WorkflowDiffEngine {
   /**
    * Apply a single operation to the workflow
    */
-  private applyOperation(workflow: Workflow, operation: WorkflowDiffOperation): void {
+  private applyOperation(
+    workflow: Workflow,
+    operation: WorkflowDiffOperation
+  ): void {
     switch (operation.type) {
-      case 'addNode':
+      case "addNode":
         this.applyAddNode(workflow, operation);
         break;
-      case 'removeNode':
+      case "removeNode":
         this.applyRemoveNode(workflow, operation);
         break;
-      case 'updateNode':
+      case "updateNode":
         this.applyUpdateNode(workflow, operation);
         break;
-      case 'moveNode':
+      case "moveNode":
         this.applyMoveNode(workflow, operation);
         break;
-      case 'enableNode':
+      case "enableNode":
         this.applyEnableNode(workflow, operation);
         break;
-      case 'disableNode':
+      case "disableNode":
         this.applyDisableNode(workflow, operation);
         break;
-      case 'addConnection':
+      case "addConnection":
         this.applyAddConnection(workflow, operation);
         break;
-      case 'removeConnection':
+      case "removeConnection":
         this.applyRemoveConnection(workflow, operation);
         break;
-      case 'rewireConnection':
-        this.applyRewireConnection(workflow, operation as RewireConnectionOperation);
+      case "rewireConnection":
+        this.applyRewireConnection(
+          workflow,
+          operation as RewireConnectionOperation
+        );
         break;
-      case 'updateSettings':
+      case "updateSettings":
         this.applyUpdateSettings(workflow, operation);
         break;
-      case 'updateName':
+      case "updateName":
         this.applyUpdateName(workflow, operation);
         break;
-      case 'addTag':
+      case "addTag":
         this.applyAddTag(workflow, operation);
         break;
-      case 'removeTag':
+      case "removeTag":
         this.applyRemoveTag(workflow, operation);
         break;
-      case 'cleanStaleConnections':
+      case "cleanStaleConnections":
         this.applyCleanStaleConnections(workflow, operation);
         break;
-      case 'replaceConnections':
+      case "replaceConnections":
         this.applyReplaceConnections(workflow, operation);
         break;
     }
   }
 
   // Node operation validators
-  private validateAddNode(workflow: Workflow, operation: AddNodeOperation): string | null {
+  private validateAddNode(
+    workflow: Workflow,
+    operation: AddNodeOperation
+  ): string | null {
     const { node } = operation;
 
     // Check if node with same name already exists (use normalization to prevent collisions)
     const normalizedNewName = this.normalizeNodeName(node.name);
-    const duplicate = workflow.nodes.find(n =>
-      this.normalizeNodeName(n.name) === normalizedNewName
+    const duplicate = workflow.nodes.find(
+      (n) => this.normalizeNodeName(n.name) === normalizedNewName
     );
     if (duplicate) {
       return `Node with name "${node.name}" already exists (normalized name matches existing node "${duplicate.name}")`;
     }
-    
+
     // Validate node type format
-    if (!node.type.includes('.')) {
+    if (!node.type.includes(".")) {
       return `Invalid node type "${node.type}". Must include package prefix (e.g., "n8n-nodes-base.webhook")`;
     }
-    
-    if (node.type.startsWith('nodes-base.')) {
-      return `Invalid node type "${node.type}". Use "n8n-nodes-base.${node.type.substring(11)}" instead`;
+
+    if (node.type.startsWith("nodes-base.")) {
+      return `Invalid node type "${
+        node.type
+      }". Use "n8n-nodes-base.${node.type.substring(11)}" instead`;
     }
-    
+
     return null;
   }
 
-  private validateRemoveNode(workflow: Workflow, operation: RemoveNodeOperation): string | null {
+  private validateRemoveNode(
+    workflow: Workflow,
+    operation: RemoveNodeOperation
+  ): string | null {
     const node = this.findNode(workflow, operation.nodeId, operation.nodeName);
     if (!node) {
-      return this.formatNodeNotFoundError(workflow, operation.nodeId || operation.nodeName || '', 'removeNode');
+      return this.formatNodeNotFoundError(
+        workflow,
+        operation.nodeId || operation.nodeName || "",
+        "removeNode"
+      );
     }
-    
+
     // Check if node has connections that would be broken
-    const hasConnections = Object.values(workflow.connections).some(conn => {
-      return Object.values(conn).some(outputs => 
-        outputs.some(connections => 
-          connections.some(c => c.node === node.name)
+    const hasConnections = Object.values(workflow.connections).some((conn) => {
+      return Object.values(conn).some((outputs) =>
+        outputs.some((connections) =>
+          connections.some((c) => c.node === node.name)
         )
       );
     });
-    
+
     if (hasConnections || workflow.connections[node.name]) {
       // This is a warning, not an error - connections will be cleaned up
-      logger.warn(`Removing node "${node.name}" will break existing connections`);
+      logger.warn(
+        `Removing node "${node.name}" will break existing connections`
+      );
     }
-    
+
     return null;
   }
 
-  private validateUpdateNode(workflow: Workflow, operation: UpdateNodeOperation): string | null {
+  private validateUpdateNode(
+    workflow: Workflow,
+    operation: UpdateNodeOperation
+  ): string | null {
     const node = this.findNode(workflow, operation.nodeId, operation.nodeName);
     if (!node) {
-      return this.formatNodeNotFoundError(workflow, operation.nodeId || operation.nodeName || '', 'updateNode');
+      return this.formatNodeNotFoundError(
+        workflow,
+        operation.nodeId || operation.nodeName || "",
+        "updateNode"
+      );
+    }
+
+    // Validate that updates field exists and is an object
+    if (!operation.updates || typeof operation.updates !== "object") {
+      return `updateNode operation requires an 'updates' object. Received: ${typeof operation.updates}. Example: {type: "updateNode", nodeId: "node-id", updates: {"parameters.url": "https://new-url.com"}}`;
+    }
+
+    // Validate that updates is not an array
+    if (Array.isArray(operation.updates)) {
+      return `updateNode 'updates' must be an object, not an array. Received array. Example: {type: "updateNode", nodeId: "node-id", updates: {"parameters.url": "https://new-url.com"}}`;
+    }
+
+    return null;
+  }
+
+  private validateMoveNode(
+    workflow: Workflow,
+    operation: MoveNodeOperation
+  ): string | null {
+    const node = this.findNode(workflow, operation.nodeId, operation.nodeName);
+    if (!node) {
+      return this.formatNodeNotFoundError(
+        workflow,
+        operation.nodeId || operation.nodeName || "",
+        "moveNode"
+      );
     }
     return null;
   }
 
-  private validateMoveNode(workflow: Workflow, operation: MoveNodeOperation): string | null {
+  private validateToggleNode(
+    workflow: Workflow,
+    operation: EnableNodeOperation | DisableNodeOperation
+  ): string | null {
     const node = this.findNode(workflow, operation.nodeId, operation.nodeName);
     if (!node) {
-      return this.formatNodeNotFoundError(workflow, operation.nodeId || operation.nodeName || '', 'moveNode');
-    }
-    return null;
-  }
-
-  private validateToggleNode(workflow: Workflow, operation: EnableNodeOperation | DisableNodeOperation): string | null {
-    const node = this.findNode(workflow, operation.nodeId, operation.nodeName);
-    if (!node) {
-      const operationType = operation.type === 'enableNode' ? 'enableNode' : 'disableNode';
-      return this.formatNodeNotFoundError(workflow, operation.nodeId || operation.nodeName || '', operationType);
+      const operationType =
+        operation.type === "enableNode" ? "enableNode" : "disableNode";
+      return this.formatNodeNotFoundError(
+        workflow,
+        operation.nodeId || operation.nodeName || "",
+        operationType
+      );
     }
     return null;
   }
 
   // Connection operation validators
-  private validateAddConnection(workflow: Workflow, operation: AddConnectionOperation): string | null {
+  private validateAddConnection(
+    workflow: Workflow,
+    operation: AddConnectionOperation
+  ): string | null {
     // Check for common parameter mistakes (Issue #249)
     const operationAny = operation as any;
     if (operationAny.sourceNodeId || operationAny.targetNodeId) {
       const wrongParams: string[] = [];
-      if (operationAny.sourceNodeId) wrongParams.push('sourceNodeId');
-      if (operationAny.targetNodeId) wrongParams.push('targetNodeId');
+      if (operationAny.sourceNodeId) wrongParams.push("sourceNodeId");
+      if (operationAny.targetNodeId) wrongParams.push("targetNodeId");
 
-      return `Invalid parameter(s): ${wrongParams.join(', ')}. Use 'source' and 'target' instead. Example: {type: "addConnection", source: "Node Name", target: "Target Name"}`;
+      return `Invalid parameter(s): ${wrongParams.join(
+        ", "
+      )}. Use 'source' and 'target' instead. Example: {type: "addConnection", source: "Node Name", target: "Target Name"}`;
     }
 
     // Check for missing required parameters
@@ -385,28 +484,36 @@ export class WorkflowDiffEngine {
       return `Missing required parameter 'target'. The addConnection operation requires both 'source' and 'target' parameters. Check that you're using 'target' (not 'targetNodeId').`;
     }
 
-    const sourceNode = this.findNode(workflow, operation.source, operation.source);
-    const targetNode = this.findNode(workflow, operation.target, operation.target);
+    const sourceNode = this.findNode(
+      workflow,
+      operation.source,
+      operation.source
+    );
+    const targetNode = this.findNode(
+      workflow,
+      operation.target,
+      operation.target
+    );
 
     if (!sourceNode) {
       const availableNodes = workflow.nodes
-        .map(n => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
-        .join(', ');
+        .map((n) => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
+        .join(", ");
       return `Source node not found: "${operation.source}". Available nodes: ${availableNodes}. Tip: Use node ID for names with special characters (apostrophes, quotes).`;
     }
     if (!targetNode) {
       const availableNodes = workflow.nodes
-        .map(n => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
-        .join(', ');
+        .map((n) => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
+        .join(", ");
       return `Target node not found: "${operation.target}". Available nodes: ${availableNodes}. Tip: Use node ID for names with special characters (apostrophes, quotes).`;
     }
 
     // Check if connection already exists
-    const sourceOutput = operation.sourceOutput || 'main';
+    const sourceOutput = operation.sourceOutput || "main";
     const existing = workflow.connections[sourceNode.name]?.[sourceOutput];
     if (existing) {
-      const hasConnection = existing.some(connections =>
-        connections.some(c => c.node === targetNode.name)
+      const hasConnection = existing.some((connections) =>
+        connections.some((c) => c.node === targetNode.name)
       );
       if (hasConnection) {
         return `Connection already exists from "${sourceNode.name}" to "${targetNode.name}"`;
@@ -416,36 +523,47 @@ export class WorkflowDiffEngine {
     return null;
   }
 
-  private validateRemoveConnection(workflow: Workflow, operation: RemoveConnectionOperation): string | null {
+  private validateRemoveConnection(
+    workflow: Workflow,
+    operation: RemoveConnectionOperation
+  ): string | null {
     // If ignoreErrors is true, don't validate - operation will silently succeed even if connection doesn't exist
     if (operation.ignoreErrors) {
       return null;
     }
 
-    const sourceNode = this.findNode(workflow, operation.source, operation.source);
-    const targetNode = this.findNode(workflow, operation.target, operation.target);
+    const sourceNode = this.findNode(
+      workflow,
+      operation.source,
+      operation.source
+    );
+    const targetNode = this.findNode(
+      workflow,
+      operation.target,
+      operation.target
+    );
 
     if (!sourceNode) {
       const availableNodes = workflow.nodes
-        .map(n => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
-        .join(', ');
+        .map((n) => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
+        .join(", ");
       return `Source node not found: "${operation.source}". Available nodes: ${availableNodes}. Tip: Use node ID for names with special characters.`;
     }
     if (!targetNode) {
       const availableNodes = workflow.nodes
-        .map(n => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
-        .join(', ');
+        .map((n) => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
+        .join(", ");
       return `Target node not found: "${operation.target}". Available nodes: ${availableNodes}. Tip: Use node ID for names with special characters.`;
     }
 
-    const sourceOutput = operation.sourceOutput || 'main';
+    const sourceOutput = operation.sourceOutput || "main";
     const connections = workflow.connections[sourceNode.name]?.[sourceOutput];
     if (!connections) {
       return `No connections found from "${sourceNode.name}"`;
     }
 
-    const hasConnection = connections.some(conns =>
-      conns.some(c => c.node === targetNode.name)
+    const hasConnection = connections.some((conns) =>
+      conns.some((c) => c.node === targetNode.name)
     );
 
     if (!hasConnection) {
@@ -455,13 +573,20 @@ export class WorkflowDiffEngine {
     return null;
   }
 
-  private validateRewireConnection(workflow: Workflow, operation: RewireConnectionOperation): string | null {
+  private validateRewireConnection(
+    workflow: Workflow,
+    operation: RewireConnectionOperation
+  ): string | null {
     // Validate source node exists
-    const sourceNode = this.findNode(workflow, operation.source, operation.source);
+    const sourceNode = this.findNode(
+      workflow,
+      operation.source,
+      operation.source
+    );
     if (!sourceNode) {
       const availableNodes = workflow.nodes
-        .map(n => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
-        .join(', ');
+        .map((n) => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
+        .join(", ");
       return `Source node not found: "${operation.source}". Available nodes: ${availableNodes}. Tip: Use node ID for names with special characters.`;
     }
 
@@ -469,8 +594,8 @@ export class WorkflowDiffEngine {
     const fromNode = this.findNode(workflow, operation.from, operation.from);
     if (!fromNode) {
       const availableNodes = workflow.nodes
-        .map(n => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
-        .join(', ');
+        .map((n) => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
+        .join(", ");
       return `"From" node not found: "${operation.from}". Available nodes: ${availableNodes}. Tip: Use node ID for names with special characters.`;
     }
 
@@ -478,13 +603,16 @@ export class WorkflowDiffEngine {
     const toNode = this.findNode(workflow, operation.to, operation.to);
     if (!toNode) {
       const availableNodes = workflow.nodes
-        .map(n => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
-        .join(', ');
+        .map((n) => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
+        .join(", ");
       return `"To" node not found: "${operation.to}". Available nodes: ${availableNodes}. Tip: Use node ID for names with special characters.`;
     }
 
     // Resolve smart parameters (branch, case) before validating connections
-    const { sourceOutput, sourceIndex } = this.resolveSmartParameters(workflow, operation);
+    const { sourceOutput, sourceIndex } = this.resolveSmartParameters(
+      workflow,
+      operation
+    );
 
     // Validate that connection from source to "from" exists at the specific index
     const connections = workflow.connections[sourceNode.name]?.[sourceOutput];
@@ -496,7 +624,9 @@ export class WorkflowDiffEngine {
       return `No connections found from "${sourceNode.name}" on output "${sourceOutput}" at index ${sourceIndex}`;
     }
 
-    const hasConnection = connections[sourceIndex].some(c => c.node === fromNode.name);
+    const hasConnection = connections[sourceIndex].some(
+      (c) => c.node === fromNode.name
+    );
 
     if (!hasConnection) {
       return `No connection exists from "${sourceNode.name}" to "${fromNode.name}" on output "${sourceOutput}" at index ${sourceIndex}"`;
@@ -524,39 +654,44 @@ export class WorkflowDiffEngine {
       maxTries: operation.node.maxTries,
       waitBetweenTries: operation.node.waitBetweenTries,
       alwaysOutputData: operation.node.alwaysOutputData,
-      executeOnce: operation.node.executeOnce
+      executeOnce: operation.node.executeOnce,
     };
-    
+
     workflow.nodes.push(newNode);
   }
 
-  private applyRemoveNode(workflow: Workflow, operation: RemoveNodeOperation): void {
+  private applyRemoveNode(
+    workflow: Workflow,
+    operation: RemoveNodeOperation
+  ): void {
     const node = this.findNode(workflow, operation.nodeId, operation.nodeName);
     if (!node) return;
-    
+
     // Remove node from array
-    const index = workflow.nodes.findIndex(n => n.id === node.id);
+    const index = workflow.nodes.findIndex((n) => n.id === node.id);
     if (index !== -1) {
       workflow.nodes.splice(index, 1);
     }
-    
+
     // Remove all connections from this node
     delete workflow.connections[node.name];
-    
+
     // Remove all connections to this node
-    Object.keys(workflow.connections).forEach(sourceName => {
+    Object.keys(workflow.connections).forEach((sourceName) => {
       const sourceConnections = workflow.connections[sourceName];
-      Object.keys(sourceConnections).forEach(outputName => {
-        sourceConnections[outputName] = sourceConnections[outputName].map(connections =>
-          connections.filter(conn => conn.node !== node.name)
-        ).filter(connections => connections.length > 0);
-        
+      Object.keys(sourceConnections).forEach((outputName) => {
+        sourceConnections[outputName] = sourceConnections[outputName]
+          .map((connections) =>
+            connections.filter((conn) => conn.node !== node.name)
+          )
+          .filter((connections) => connections.length > 0);
+
         // Clean up empty arrays
         if (sourceConnections[outputName].length === 0) {
           delete sourceConnections[outputName];
         }
       });
-      
+
       // Clean up empty connection objects
       if (Object.keys(sourceConnections).length === 0) {
         delete workflow.connections[sourceName];
@@ -564,34 +699,56 @@ export class WorkflowDiffEngine {
     });
   }
 
-  private applyUpdateNode(workflow: Workflow, operation: UpdateNodeOperation): void {
+  private applyUpdateNode(
+    workflow: Workflow,
+    operation: UpdateNodeOperation
+  ): void {
     const node = this.findNode(workflow, operation.nodeId, operation.nodeName);
     if (!node) return;
-    
+
+    // Guard against undefined/null updates
+    if (!operation.updates || typeof operation.updates !== "object") {
+      logger.warn(`updateNode operation has invalid updates field`, {
+        nodeId: operation.nodeId,
+        nodeName: operation.nodeName,
+        updates: operation.updates,
+      });
+      return;
+    }
+
     // Apply updates using dot notation
     Object.entries(operation.updates).forEach(([path, value]) => {
       this.setNestedProperty(node, path, value);
     });
   }
 
-  private applyMoveNode(workflow: Workflow, operation: MoveNodeOperation): void {
+  private applyMoveNode(
+    workflow: Workflow,
+    operation: MoveNodeOperation
+  ): void {
     const node = this.findNode(workflow, operation.nodeId, operation.nodeName);
     if (!node) return;
-    
+
     node.position = operation.position;
   }
 
-  private applyEnableNode(workflow: Workflow, operation: EnableNodeOperation): void {
+  private applyEnableNode(
+    workflow: Workflow,
+    operation: EnableNodeOperation
+  ): void {
     const node = this.findNode(workflow, operation.nodeId, operation.nodeName);
     if (!node) return;
-    
+
     node.disabled = false;
   }
 
-  private applyDisableNode(workflow: Workflow, operation: DisableNodeOperation): void {
+  private applyDisableNode(
+    workflow: Workflow,
+    operation: DisableNodeOperation
+  ): void {
     const node = this.findNode(workflow, operation.nodeId, operation.nodeName);
     if (!node) return;
-    
+
     node.disabled = true;
   }
 
@@ -603,18 +760,22 @@ export class WorkflowDiffEngine {
     workflow: Workflow,
     operation: AddConnectionOperation | RewireConnectionOperation
   ): { sourceOutput: string; sourceIndex: number } {
-    const sourceNode = this.findNode(workflow, operation.source, operation.source);
+    const sourceNode = this.findNode(
+      workflow,
+      operation.source,
+      operation.source
+    );
 
     // Start with explicit values or defaults
-    let sourceOutput = operation.sourceOutput ?? 'main';
+    let sourceOutput = operation.sourceOutput ?? "main";
     let sourceIndex = operation.sourceIndex ?? 0;
 
     // Smart parameter: branch (for IF nodes)
     // IF nodes use 'main' output with index 0 (true) or 1 (false)
     if (operation.branch !== undefined && operation.sourceIndex === undefined) {
       // Only apply if sourceIndex not explicitly set
-      if (sourceNode?.type === 'n8n-nodes-base.if') {
-        sourceIndex = operation.branch === 'true' ? 0 : 1;
+      if (sourceNode?.type === "n8n-nodes-base.if") {
+        sourceIndex = operation.branch === "true" ? 0 : 1;
         // sourceOutput remains 'main' (do not change it)
       }
     }
@@ -629,16 +790,30 @@ export class WorkflowDiffEngine {
   }
 
   // Connection operation appliers
-  private applyAddConnection(workflow: Workflow, operation: AddConnectionOperation): void {
-    const sourceNode = this.findNode(workflow, operation.source, operation.source);
-    const targetNode = this.findNode(workflow, operation.target, operation.target);
+  private applyAddConnection(
+    workflow: Workflow,
+    operation: AddConnectionOperation
+  ): void {
+    const sourceNode = this.findNode(
+      workflow,
+      operation.source,
+      operation.source
+    );
+    const targetNode = this.findNode(
+      workflow,
+      operation.target,
+      operation.target
+    );
     if (!sourceNode || !targetNode) return;
 
     // Resolve smart parameters (branch, case) to technical parameters
-    const { sourceOutput, sourceIndex } = this.resolveSmartParameters(workflow, operation);
+    const { sourceOutput, sourceIndex } = this.resolveSmartParameters(
+      workflow,
+      operation
+    );
 
     // Use nullish coalescing to properly handle explicit 0 values
-    const targetInput = operation.targetInput ?? 'main';
+    const targetInput = operation.targetInput ?? "main";
     const targetIndex = operation.targetIndex ?? 0;
 
     // Initialize source node connections object
@@ -668,13 +843,24 @@ export class WorkflowDiffEngine {
     outputArray[sourceIndex].push({
       node: targetNode.name,
       type: targetInput,
-      index: targetIndex
+      index: targetIndex,
     });
   }
 
-  private applyRemoveConnection(workflow: Workflow, operation: RemoveConnectionOperation): void {
-    const sourceNode = this.findNode(workflow, operation.source, operation.source);
-    const targetNode = this.findNode(workflow, operation.target, operation.target);
+  private applyRemoveConnection(
+    workflow: Workflow,
+    operation: RemoveConnectionOperation
+  ): void {
+    const sourceNode = this.findNode(
+      workflow,
+      operation.source,
+      operation.source
+    );
+    const targetNode = this.findNode(
+      workflow,
+      operation.target,
+      operation.target
+    );
     // If ignoreErrors is true, silently succeed even if nodes don't exist
     if (!sourceNode || !targetNode) {
       if (operation.ignoreErrors) {
@@ -682,26 +868,30 @@ export class WorkflowDiffEngine {
       }
       return; // Should never reach here if validation passed, but safety check
     }
-    
-    const sourceOutput = operation.sourceOutput || 'main';
+
+    const sourceOutput = operation.sourceOutput || "main";
     const connections = workflow.connections[sourceNode.name]?.[sourceOutput];
     if (!connections) return;
-    
+
     // Remove connection from all indices
-    workflow.connections[sourceNode.name][sourceOutput] = connections.map(conns =>
-      conns.filter(conn => conn.node !== targetNode.name)
+    workflow.connections[sourceNode.name][sourceOutput] = connections.map(
+      (conns) => conns.filter((conn) => conn.node !== targetNode.name)
     );
 
     // Remove trailing empty arrays only (preserve intermediate empty arrays to maintain indices)
-    const outputConnections = workflow.connections[sourceNode.name][sourceOutput];
-    while (outputConnections.length > 0 && outputConnections[outputConnections.length - 1].length === 0) {
+    const outputConnections =
+      workflow.connections[sourceNode.name][sourceOutput];
+    while (
+      outputConnections.length > 0 &&
+      outputConnections[outputConnections.length - 1].length === 0
+    ) {
       outputConnections.pop();
     }
 
     if (outputConnections.length === 0) {
       delete workflow.connections[sourceNode.name][sourceOutput];
     }
-    
+
     if (Object.keys(workflow.connections[sourceNode.name]).length === 0) {
       delete workflow.connections[sourceNode.name];
     }
@@ -715,40 +905,52 @@ export class WorkflowDiffEngine {
    * @param workflow - Workflow to modify
    * @param operation - Rewire operation specifying source, from, and to
    */
-  private applyRewireConnection(workflow: Workflow, operation: RewireConnectionOperation): void {
+  private applyRewireConnection(
+    workflow: Workflow,
+    operation: RewireConnectionOperation
+  ): void {
     // Resolve smart parameters (branch, case) to technical parameters
-    const { sourceOutput, sourceIndex } = this.resolveSmartParameters(workflow, operation);
+    const { sourceOutput, sourceIndex } = this.resolveSmartParameters(
+      workflow,
+      operation
+    );
 
     // First, remove the old connection (source → from)
     this.applyRemoveConnection(workflow, {
-      type: 'removeConnection',
+      type: "removeConnection",
       source: operation.source,
       target: operation.from,
       sourceOutput: sourceOutput,
-      targetInput: operation.targetInput
+      targetInput: operation.targetInput,
     });
 
     // Then, add the new connection (source → to)
     this.applyAddConnection(workflow, {
-      type: 'addConnection',
+      type: "addConnection",
       source: operation.source,
       target: operation.to,
       sourceOutput: sourceOutput,
       targetInput: operation.targetInput,
       sourceIndex: sourceIndex,
-      targetIndex: 0 // Default target index for new connection
+      targetIndex: 0, // Default target index for new connection
     });
   }
 
   // Metadata operation appliers
-  private applyUpdateSettings(workflow: Workflow, operation: UpdateSettingsOperation): void {
+  private applyUpdateSettings(
+    workflow: Workflow,
+    operation: UpdateSettingsOperation
+  ): void {
     if (!workflow.settings) {
       workflow.settings = {};
     }
     Object.assign(workflow.settings, operation.settings);
   }
 
-  private applyUpdateName(workflow: Workflow, operation: UpdateNameOperation): void {
+  private applyUpdateName(
+    workflow: Workflow,
+    operation: UpdateNameOperation
+  ): void {
     workflow.name = operation.name;
   }
 
@@ -761,9 +963,12 @@ export class WorkflowDiffEngine {
     }
   }
 
-  private applyRemoveTag(workflow: Workflow, operation: RemoveTagOperation): void {
+  private applyRemoveTag(
+    workflow: Workflow,
+    operation: RemoveTagOperation
+  ): void {
     if (!workflow.tags) return;
-    
+
     const index = workflow.tags.indexOf(operation.tag);
     if (index !== -1) {
       workflow.tags.splice(index, 1);
@@ -771,14 +976,20 @@ export class WorkflowDiffEngine {
   }
 
   // Connection cleanup operation validators
-  private validateCleanStaleConnections(workflow: Workflow, operation: CleanStaleConnectionsOperation): string | null {
+  private validateCleanStaleConnections(
+    workflow: Workflow,
+    operation: CleanStaleConnectionsOperation
+  ): string | null {
     // This operation is always valid - it just cleans up what it finds
     return null;
   }
 
-  private validateReplaceConnections(workflow: Workflow, operation: ReplaceConnectionsOperation): string | null {
+  private validateReplaceConnections(
+    workflow: Workflow,
+    operation: ReplaceConnectionsOperation
+  ): string | null {
     // Validate that all referenced nodes exist
-    const nodeNames = new Set(workflow.nodes.map(n => n.name));
+    const nodeNames = new Set(workflow.nodes.map((n) => n.name));
 
     for (const [sourceName, outputs] of Object.entries(operation.connections)) {
       if (!nodeNames.has(sourceName)) {
@@ -802,13 +1013,18 @@ export class WorkflowDiffEngine {
   }
 
   // Connection cleanup operation appliers
-  private applyCleanStaleConnections(workflow: Workflow, operation: CleanStaleConnectionsOperation): void {
-    const nodeNames = new Set(workflow.nodes.map(n => n.name));
+  private applyCleanStaleConnections(
+    workflow: Workflow,
+    operation: CleanStaleConnectionsOperation
+  ): void {
+    const nodeNames = new Set(workflow.nodes.map((n) => n.name));
     const staleConnections: Array<{ from: string; to: string }> = [];
 
     // If dryRun, only identify stale connections without removing them
     if (operation.dryRun) {
-      for (const [sourceName, outputs] of Object.entries(workflow.connections)) {
+      for (const [sourceName, outputs] of Object.entries(
+        workflow.connections
+      )) {
         if (!nodeNames.has(sourceName)) {
           for (const [outputName, connections] of Object.entries(outputs)) {
             for (const conns of connections) {
@@ -829,7 +1045,10 @@ export class WorkflowDiffEngine {
           }
         }
       }
-      logger.info(`[DryRun] Would remove ${staleConnections.length} stale connections:`, staleConnections);
+      logger.info(
+        `[DryRun] Would remove ${staleConnections.length} stale connections:`,
+        staleConnections
+      );
       return;
     }
 
@@ -850,15 +1069,17 @@ export class WorkflowDiffEngine {
 
       // Check each connection
       for (const [outputName, connections] of Object.entries(outputs)) {
-        const filteredConnections = connections.map(conns =>
-          conns.filter(conn => {
-            if (!nodeNames.has(conn.node)) {
-              staleConnections.push({ from: sourceName, to: conn.node });
-              return false;
-            }
-            return true;
-          })
-        ).filter(conns => conns.length > 0);
+        const filteredConnections = connections
+          .map((conns) =>
+            conns.filter((conn) => {
+              if (!nodeNames.has(conn.node)) {
+                staleConnections.push({ from: sourceName, to: conn.node });
+                return false;
+              }
+              return true;
+            })
+          )
+          .filter((conns) => conns.length > 0);
 
         if (filteredConnections.length === 0) {
           delete outputs[outputName];
@@ -876,7 +1097,10 @@ export class WorkflowDiffEngine {
     logger.info(`Removed ${staleConnections.length} stale connections`);
   }
 
-  private applyReplaceConnections(workflow: Workflow, operation: ReplaceConnectionsOperation): void {
+  private applyReplaceConnections(
+    workflow: Workflow,
+    operation: ReplaceConnectionsOperation
+  ): void {
     workflow.connections = operation.connections;
   }
 
@@ -906,11 +1130,11 @@ export class WorkflowDiffEngine {
    */
   private normalizeNodeName(name: string): string {
     return name
-      .trim()                    // Remove leading/trailing whitespace
-      .replace(/\\\\/g, '\\')    // FIRST: Unescape backslashes: \\ -> \ (must be first to handle multiply-escaped chars)
-      .replace(/\\'/g, "'")      // THEN: Unescape single quotes: \' -> '
-      .replace(/\\"/g, '"')      // THEN: Unescape double quotes: \" -> "
-      .replace(/\s+/g, ' ');     // FINALLY: Normalize all whitespace (spaces, tabs, newlines) to single space
+      .trim() // Remove leading/trailing whitespace
+      .replace(/\\\\/g, "\\") // FIRST: Unescape backslashes: \\ -> \ (must be first to handle multiply-escaped chars)
+      .replace(/\\'/g, "'") // THEN: Unescape single quotes: \' -> '
+      .replace(/\\"/g, '"') // THEN: Unescape double quotes: \" -> "
+      .replace(/\s+/g, " "); // FINALLY: Normalize all whitespace (spaces, tabs, newlines) to single space
   }
 
   /**
@@ -922,18 +1146,22 @@ export class WorkflowDiffEngine {
    * @param nodeName - Optional node name to search for
    * @returns The found node or null
    */
-  private findNode(workflow: Workflow, nodeId?: string, nodeName?: string): WorkflowNode | null {
+  private findNode(
+    workflow: Workflow,
+    nodeId?: string,
+    nodeName?: string
+  ): WorkflowNode | null {
     // Try to find by ID first (exact match, no normalization needed for UUIDs)
     if (nodeId) {
-      const nodeById = workflow.nodes.find(n => n.id === nodeId);
+      const nodeById = workflow.nodes.find((n) => n.id === nodeId);
       if (nodeById) return nodeById;
     }
 
     // Try to find by name with normalization (handles special characters)
     if (nodeName) {
       const normalizedSearch = this.normalizeNodeName(nodeName);
-      const nodeByName = workflow.nodes.find(n =>
-        this.normalizeNodeName(n.name) === normalizedSearch
+      const nodeByName = workflow.nodes.find(
+        (n) => this.normalizeNodeName(n.name) === normalizedSearch
       );
       if (nodeByName) return nodeByName;
     }
@@ -942,8 +1170,8 @@ export class WorkflowDiffEngine {
     // This allows operations to work with either IDs or names flexibly
     if (nodeId && !nodeName) {
       const normalizedSearch = this.normalizeNodeName(nodeId);
-      const nodeByName = workflow.nodes.find(n =>
-        this.normalizeNodeName(n.name) === normalizedSearch
+      const nodeByName = workflow.nodes.find(
+        (n) => this.normalizeNodeName(n.name) === normalizedSearch
       );
       if (nodeByName) return nodeByName;
     }
@@ -966,23 +1194,23 @@ export class WorkflowDiffEngine {
     operationType: string
   ): string {
     const availableNodes = workflow.nodes
-      .map(n => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
-      .join(', ');
+      .map((n) => `"${n.name}" (id: ${n.id.substring(0, 8)}...)`)
+      .join(", ");
     return `Node not found for ${operationType}: "${nodeIdentifier}". Available nodes: ${availableNodes}. Tip: Use node ID for names with special characters (apostrophes, quotes).`;
   }
 
   private setNestedProperty(obj: any, path: string, value: any): void {
-    const keys = path.split('.');
+    const keys = path.split(".");
     let current = obj;
-    
+
     for (let i = 0; i < keys.length - 1; i++) {
       const key = keys[i];
-      if (!(key in current) || typeof current[key] !== 'object') {
+      if (!(key in current) || typeof current[key] !== "object") {
         current[key] = {};
       }
       current = current[key];
     }
-    
+
     current[keys[keys.length - 1]] = value;
   }
 }

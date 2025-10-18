@@ -1,35 +1,35 @@
-import { promises as fs } from 'fs';
-import path from 'path';
+import { promises as fs } from "fs";
+import path from "path";
 
 export class DocsMapper {
-  private docsPath = path.join(process.cwd(), 'n8n-docs');
-  
+  private docsPath = path.join(process.cwd(), "..", "n8n-docs");
+
   // Known documentation mapping fixes
   private readonly KNOWN_FIXES: Record<string, string> = {
-    'httpRequest': 'httprequest',
-    'code': 'code',
-    'webhook': 'webhook',
-    'respondToWebhook': 'respondtowebhook',
+    httpRequest: "httprequest",
+    code: "code",
+    webhook: "webhook",
+    respondToWebhook: "respondtowebhook",
     // With package prefix
-    'n8n-nodes-base.httpRequest': 'httprequest',
-    'n8n-nodes-base.code': 'code',
-    'n8n-nodes-base.webhook': 'webhook',
-    'n8n-nodes-base.respondToWebhook': 'respondtowebhook'
+    "n8n-nodes-base.httpRequest": "httprequest",
+    "n8n-nodes-base.code": "code",
+    "n8n-nodes-base.webhook": "webhook",
+    "n8n-nodes-base.respondToWebhook": "respondtowebhook",
   };
 
   async fetchDocumentation(nodeType: string): Promise<string | null> {
     // Apply known fixes first
     const fixedType = this.KNOWN_FIXES[nodeType] || nodeType;
-    
+
     // Extract node name
-    const nodeName = fixedType.split('.').pop()?.toLowerCase();
+    const nodeName = fixedType.split(".").pop()?.toLowerCase();
     if (!nodeName) {
       console.log(`⚠️  Could not extract node name from: ${nodeType}`);
       return null;
     }
-    
+
     console.log(`📄 Looking for docs for: ${nodeType} -> ${nodeName}`);
-    
+
     // Try different documentation paths - both files and directories
     const possiblePaths = [
       // Direct file paths
@@ -43,33 +43,36 @@ export class DocsMapper {
       `docs/integrations/builtin/app-nodes/n8n-nodes-base.${nodeName}/index.md`,
       `docs/integrations/builtin/trigger-nodes/n8n-nodes-base.${nodeName}/index.md`,
       `docs/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.${nodeName}/index.md`,
-      `docs/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.${nodeName}/index.md`
+      `docs/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.${nodeName}/index.md`,
     ];
-    
+
     // Try each path
     for (const relativePath of possiblePaths) {
       try {
         const fullPath = path.join(this.docsPath, relativePath);
-        let content = await fs.readFile(fullPath, 'utf-8');
+        let content = await fs.readFile(fullPath, "utf-8");
         console.log(`  ✓ Found docs at: ${relativePath}`);
-        
+
         // Inject special guidance for loop nodes
         content = this.enhanceLoopNodeDocumentation(nodeType, content);
-        
+
         return content;
       } catch (error) {
         // File doesn't exist, try next
         continue;
       }
     }
-    
+
     console.log(`  ✗ No docs found for ${nodeName}`);
     return null;
   }
 
-  private enhanceLoopNodeDocumentation(nodeType: string, content: string): string {
+  private enhanceLoopNodeDocumentation(
+    nodeType: string,
+    content: string
+  ): string {
     // Add critical output index information for SplitInBatches
-    if (nodeType.includes('splitInBatches')) {
+    if (nodeType.includes("splitInBatches")) {
       const outputGuidance = `
 
 ## CRITICAL OUTPUT CONNECTION INFORMATION
@@ -90,17 +93,20 @@ AI assistants often connect these backwards because the logical flow (loop first
 
 `;
       // Insert after the main description
-      const insertPoint = content.indexOf('## When to use');
+      const insertPoint = content.indexOf("## When to use");
       if (insertPoint > -1) {
-        content = content.slice(0, insertPoint) + outputGuidance + content.slice(insertPoint);
+        content =
+          content.slice(0, insertPoint) +
+          outputGuidance +
+          content.slice(insertPoint);
       } else {
         // Append if no good insertion point found
-        content = outputGuidance + '\n' + content;
+        content = outputGuidance + "\n" + content;
       }
     }
 
     // Add guidance for IF node
-    if (nodeType.includes('.if')) {
+    if (nodeType.includes(".if")) {
       const outputGuidance = `
 
 ## Output Connection Information
@@ -110,9 +116,12 @@ The IF node has TWO outputs:
 - **Output 1 (index 1) = "false"**: Items that do not match the condition
 
 `;
-      const insertPoint = content.indexOf('## Node parameters');
+      const insertPoint = content.indexOf("## Node parameters");
       if (insertPoint > -1) {
-        content = content.slice(0, insertPoint) + outputGuidance + content.slice(insertPoint);
+        content =
+          content.slice(0, insertPoint) +
+          outputGuidance +
+          content.slice(insertPoint);
       }
     }
 
