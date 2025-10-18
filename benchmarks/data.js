@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1760221287099,
-  "repoUrl": "https://github.com/czlonkowski/n8n-mcp",
+  "lastUpdate": 1760831567038,
+  "repoUrl": "https://github.com/wiktorzawa/n8n-mcp-local",
   "entries": {
     "n8n-mcp Benchmarks": [
       {
@@ -2049,6 +2049,37 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/czlonkowski/n8n-mcp/commit/4566253bdc2bc1bc734034c183b5249d4c96053e"
         },
         "date": 1760221286694,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "sample - array sorting - small",
+            "value": 0.0136,
+            "range": "0.3096",
+            "unit": "ms",
+            "extra": "73341 ops/sec"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "github@kindlund.com",
+            "name": "Darien Kindlund",
+            "username": "dkindlund"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "41830c88fec31bff4638589ae7fdb0c47d0f3bf9",
+          "message": "fix: clarified n8n_update_partial_workflow instructions in system message (#336)\n\n* fix: clarified n8n_update_partial_workflow instructions in system message\n\n* fix: document IF node branch parameter for addConnection operations\n\nAdd critical documentation for using the `branch` parameter when connecting\nIF nodes with addConnection operations. Without this parameter, both TRUE\nand FALSE outputs route to the same destination, causing logic errors.\n\nIncludes:\n- Examples of branch=\"true\" and branch=\"false\" usage\n- Common pattern for complete IF node routing\n- Warning about omitting the branch parameter\n\nRelated to GitHub Issue #327\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>",
+          "timestamp": "2025-10-18T22:17:22+02:00",
+          "tree_id": "891e5a6116235027d4d047a1c02e8e5e22efbbc0",
+          "url": "https://github.com/wiktorzawa/n8n-mcp-local/commit/41830c88fec31bff4638589ae7fdb0c47d0f3bf9"
+        },
+        "date": 1760831566775,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
