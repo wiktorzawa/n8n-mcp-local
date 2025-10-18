@@ -105,6 +105,15 @@ data/*.db.backup
 !data/.gitkeep
 !data/nodes.db
 
+# Local n8n setup - exclude large database files
+local-setup/n8n-data/database.sqlite
+local-setup/n8n-data/database.sqlite-*
+local-setup/n8n-data/*.db
+local-setup/n8n-data/*.db-*
+local-setup/n8n-mcp-data/*.db
+local-setup/n8n-mcp-data/*.db-*
+local-setup/logs/
+
 # Claude Desktop configs (personal)
 claude_desktop_config.json
 claude_desktop_config_*.json
